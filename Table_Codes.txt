@@ -1,0 +1,156 @@
+--Create Table Employee
+(EID number not null,
+E_Name varchar(50),
+E_PhNo number,
+E_address varchar(80),
+E_EmailID varchar(80),
+E_JoinDate Date,
+E_EndDate Date,
+E_Type varchar(50),
+check (E_Type in ('Fitness Instructor' , 'Administrative Staff')),
+constraint Employee_PK Primary Key (EID));
+
+
+
+--Create Table Instructor
+(EID number not null,
+Hours_Worked number,
+Specialization varchar(30),
+Certification_Level varchar(30),
+constraint Instructor_PK Primary Key (EID),
+Constraint Instructor_FK1 Foreign Key (EID)
+References Employee(EID));
+
+
+--Create Table Admin_Staff
+(EID number not null,
+Type_Speed varchar(25),
+Qualification varchar(30),
+constraint Admin_Staff_PK Primary Key (EID),
+Constraint Admin_Staff_FK1 Foreign Key (EID)
+References Employee(EID));
+
+
+
+--Create Table Salary
+(SSN number not null,
+Compensation decimal(5,2),
+Bonus decimal(5,2),
+EID number,
+Constraint Salary_PK Primary Key (SSN),
+Constraint Salary_FK1 Foreign Key (EID)
+References Employee(EID));
+
+
+--Create Table Member
+(MID number not null,
+M_Name varchar(50),
+M_PhNo number,
+M_Address varchar(80),
+M_EmailID varchar(80),
+M_JoinDate Date,
+M_EndDate Date,
+M_Fees Decimal(6,2),
+Membership_Type varchar(35),
+Check (Membership_Type in ('Monthly', 'Semi Annually', 'Annually')),
+EID number,
+Status varchar(20),
+constraint Member_PK Primary Key (MID),
+Constraint Member_FK1 Foreign Key(EID)
+References Instructor(EID));
+
+
+--Create Table Member_Payment
+(Transaction_ID number not null,
+Payment_Type varchar(25),
+Check (Payment_Type in  ('Cash', 'Credit Card', 'Debit Card')),
+Amount_Paid Decimal(6,2),
+Date_of_Payment Date,
+MID number,
+constraint Member_Payment_PK Primary Key (Transaction_ID),
+Constraint Member_Payment_FK1 Foreign Key (MID)
+References Member(MID));
+
+
+
+
+--Create Table Supplier
+(SID number not null,
+S_Name varchar(50),
+S_PhNo number,
+S_Address varchar(80),
+S_EmailID varchar(80),
+Constraint Supplier_PK Primary Key (SID));
+
+
+--Create Table Maintenance_Team
+(MT_ID number not null,
+MT_Name varchar(50),
+MT_Address varchar(80),
+MT_PhNo number,
+Constraint Maintenance_Team_PK Primary Key(MT_ID));
+
+
+--Create Table Facilities
+(FID number not null,
+F_Name varchar(50),
+F_Expenditure Decimal(7,2),
+Constraint Facilities_PK Primary Key(FID));
+
+
+--Create Table Equipment
+(Eq_ID number not null,
+Eq_Name varchar(50),
+Last_Serviced Date,
+SID number,
+MT_ID number,
+FID number,
+Maintained_By varchar(30),
+constraint Equipment_PK Primary Key (Eq_ID),
+Constraint Equipment_FK1 Foreign Key (SID)
+References Supplier(SID),
+Constraint Equipment_FK2 Foreign Key  (MT_ID)
+References Maintenance_Team(MT_ID),
+Constraint Equipment_FK3 Foreign Key (FID)
+References Facilities(FID));
+
+
+--Create Table Purchase_Order
+(Purchase_ID number not null,
+Purchase_Amt Decimal(7,2),
+EID number,
+FID number,
+SID number,
+constraint Purchase_Order_PK Primary Key (Purchase_ID),
+Constraint Purchase_Order_FK1 Foreign Key (SID)
+References Supplier(SID),
+Constraint Purchase_Order_FK2 Foreign Key  (EID)
+References Admin_Staff(EID),
+Constraint Purchase_Order_FK3 Foreign Key (FID)
+References Facilities(FID));
+
+
+--Create Table Class
+(Class_ID number not null,
+C_Name varchar(50),
+C_Day varchar(50),
+Member_Count Number,
+EID number,
+Instructor_Name varchar2(50),
+Available varchar(5)
+Backup_Instructor varchar(50),
+Constraint Class_PK Primary Key(Class_ID),
+Constraint Class_FK1 Foreign Key(EID)
+References Instructor(EID));
+
+
+
+--Create Table Enroll_Class
+(Class_ID number not null,
+MID number not null,
+EID number,
+Constraint Enroll_Class_PK Primary Key(Class_ID, MID),
+Constraint Enroll_Class_FK1 Foreign Key(EID)
+References Instructor(EID));
+
+

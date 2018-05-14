@@ -1,0 +1,363 @@
+1. Displaying Facilities offered by the Gym
+
+DECLARE
+FName VARCHAR(50);
+Cursor c1 IS SELECT F_Name FROM Facilities;
+BEGIN
+OPEN c1;
+DBMS_OUTPUT.PUT_LINE('Facilities offered by this gym are:');
+LOOP
+FETCH c1 INTO FName;
+EXIT WHEN c1%NOTFOUND;
+DBMS_OUTPUT.PUT_LINE(FName);
+END LOOP;
+END;
+
+
+
+2. No Duplicate Membership
+
+
+create or replace procedure duplicate_Membership_output( Phone in number, Mem_Name out VARCHAR2, M_ID out Number) is
+BEGIN
+Select M_Name, MID into Mem_Name, M_ID from member where M_phno = Phone;
+Dbms_output.put_line('Member Name is ' || Mem_Name|| ' The old Member_ID is '|| M_ID);
+exception
+when no_data_found then
+dbms_output.put_line('No previous memberships found with this phone number');
+end;
+
+Declare
+Phone2 number;
+Mem_Name2 varchar2(30); M_ID2 Number;
+Begin
+duplicate_membership_Output(5556667777,Mem_Name2, M_ID2);
+End;
+
+
+
+3. Update member count when a member registers
+
+
+CREATE OR REPLACE FUNCTION Update_Class_Capc (ClassID IN Number) RETURN Number IS 
+Membercount Number := 0;
+BEGIN 
+  SELECT Member_count INTO Membercount FROM Class WHERE Class_ID = ClassID; 
+  IF (Membercount = 20) THEN 
+     DBMS_OUTPUT.PUT_LINE('This class is full, No more Registration allowed!');
+     RETURN -1;
+  ELSE 
+     Membercount := Membercount + 1;
+     UPDATE Class SET member_count = membercount WHERE ClassID = Class_ID; 
+     DBMS_OUTPUT.PUT_LINE('The number of members in this class has been updated');
+     RETURN 1;
+  END IF; 
+EXCEPTION 
+  WHEN NO_DATA_FOUND THEN 
+    DBMS_OUTPUT.PUT_LINE('No Records match your search'); 
+    RETURN -1; 
+  WHEN TOO_MANY_ROWS THEN 
+    DBMS_OUTPUT.PUT_LINE('Too many Records were Returned'); 
+    RETURN -1; 
+END ;
+
+declare
+membercount number;
+Begin
+membercount := Update_Class_Capc(102);
+
+
+
+
+4. Minimum 5 members required to schedule a class
+
+CREATE OR REPLACE FUNCTION Member_Class (ClassID IN Number) RETURN Number IS 
+Membercount Number := 0;
+BEGIN 
+  SELECT Member_count INTO Membercount FROM Class WHERE Class_ID = ClassID; 
+  IF (Membercount < 5) THEN 
+     DBMS_OUTPUT.PUT_LINE('This class is cancelled.');
+     RETURN -1;
+  ELSE 
+     Membercount := Membercount + 1;
+     UPDATE Class SET member_count = membercount WHERE ClassID = Class_ID; 
+     DBMS_OUTPUT.PUT_LINE('Since, the number of members now are ' || MemberCount|| ' , the class can be scheduled.');
+     RETURN 1;
+END IF; 
+END ;
+
+declare
+membercount number;
+Begin
+membercount := Member_Class(101);
+End;
+
+
+
+
+5. A member cannot register for two classes on the same day and time.
+
+Create or replace procedure mem_reg1 (M_ID in number, Ctiming out varchar2) is
+BEGIN
+select count(1) into CTiming from Classwithmembers where MID = M_ID;
+if (Ctiming > 1) then
+dbms_output.put_line('Member will have to withdraw from one class, as they cannot register for two classes on the same day and time.');
+else
+dbms_output.put_line('No Duplicate classes found.');
+End if;
+end;
+
+
+Declare
+M_ID number;
+CTiming Varchar2(30); 
+Begin
+Mem_reg1(103, Ctiming);
+End;
+
+
+
+6. Renewal of membership can be done up till 5 days of expiration. After 5 days the member shows up as inactive.
+
+Create or replace Procedure mem_expiration_Proc (M_ID in number, mem_enddate out date, M_status out Varchar2, current_date out date, M_fees1 out number, New_fees out number) is
+BEGIN
+current_date := sysdate;
+select m_enddate, status, M_fees into mem_enddate, m_status, M_fees1 from member where MID = M_ID;
+if ((current_date = mem_enddate + interval '5' day) or (current_date > mem_enddate + interval '5' day)) then 
+dbms_output.put_line('Membership has expired');
+M_status := 'Inactive';
+UPDATE Member SET Status = M_status WHERE M_ID = MID;
+New_fees:= (M_fees1 + (0.2* M_fees1));
+dbms_output.put_line('Please charge the customer $' || New_fees|| ' per month if he returns.');
+else dbms_output.put_line('Membership is active and expires on '|| mem_enddate );
+end if;
+END;
+
+Declare
+M_Status varchar2(30);
+mem_enddate date; 
+current_date date;
+M_fees1 number;
+New_fees number;
+Begin
+mem_expiration_Proc(103, mem_enddate, M_status, current_date, M_fees1, New_fees);
+End;
+
+
+
+
+7. When member pays full fee within 3 days of joining the gym, they get 10% discount on their member fee.
+
+Create or replace Procedure Mem_Fee_Cal (M_ID in number, mem_join_date out date, dateofpayment out date, M_fees1 out number, A_Paid out number) is
+BEGIN
+select M_joindate, M_fees, Amount_paid, Date_of_payment into Mem_join_date, M_fees1, A_Paid, Dateofpayment from Memberwithpayment where MID= M_ID;
+if ((dateofpayment = mem_join_date + interval '3' day) or (dateofpayment < mem_join_date + interval '3' day)) then 
+A_Paid := (M_fees1 - (0.1* M_fees1));
+Update Memberwithpayment Set Amount_Paid = A_Paid where MID = M_ID;
+dbms_output.put_line('Please offer 10% discount to this customer. The customer should pay $' || A_Paid|| ' after 10% discount.');
+else
+dbms_output.put_line('No discount offered.');
+end if;
+END;
+
+
+Declare
+M_ID number;
+Mem_join_date date;
+dateofpayment date;
+M_fees1 number;
+A_paid number;
+Begin
+Mem_Fee_Cal(105, Mem_join_date, dateofpayment, M_fees1, A_Paid);
+End;
+
+
+
+
+8. If Member pays fees after 7 days since join date, he is charged a late fee.
+
+Create or replace Procedure Mem_LateFee (M_ID in number, mem_join_date out date, dateofpayment out date, M_fees1 out number, A_Paid out number) is
+BEGIN
+select M_joindate, M_fees, Amount_paid, Date_of_payment into Mem_join_date, M_fees1, A_Paid, Dateofpayment from Memberwithpayment where MID= M_ID;
+if ((dateofpayment > mem_join_date + interval '7' day)) then 
+A_Paid := (M_fees1 + (((dateofpayment - mem_join_date)  * 1.00)- 7.00));
+Update Memberwithpayment Set Amount_Paid = A_Paid where MID = M_ID;
+dbms_output.put_line('Late fee is applicable. The customer should pay $' || A_Paid|| ' after late fee.');
+else
+dbms_output.put_line('No late fee applicable.');
+end if;
+END;
+
+
+Declare
+M_ID number;
+Mem_join_date date;
+dateofpayment date;
+M_fees1 number;
+A_paid number;
+Begin
+Mem_LateFee(103, Mem_join_date, dateofpayment, M_fees1, A_Paid);
+End;
+
+
+
+
+9. Change Instructor if current instructor is not available.
+
+Create or Replace Trigger  INSTRUCTORNAMECHANGE_TRIGGER
+After update of Instructor_Name on Class
+for each row
+declare
+C_name varchar(20);
+begin
+if Updating ('Instructor_Name') Then
+DBMS_Output.Put_Line ('Since ' || :OLD.Instructor_Name|| ' was not available today, class instructor has been changed to ' || :NEW.Instructor_Name|| ' for this week.');
+End if;
+End;
+
+Update Class Set Instructor_Name = Backup_Instructor where Available = 'No';
+
+
+
+
+10. No Instructor working more than 30 hours in a week.
+
+create or replace trigger Hours_Worked_Trigger
+Before update of Hours_Worked on Instructor
+for each row
+begin
+if (:new.Hours_Worked > 30) Then
+DBMS_Output.Put_Line ('No instructor can work for more than 30 hours. Please make changes to their schedule');
+End if;
+End;
+
+Update Instructor SET Hours_Worked = 31 WHERE EID = 3;
+
+
+
+11. Compensation Difference & Bonus Calculation
+
+Create or replace function cal_Bonus (E_SSN in number) return number
+IS e_bonus number;
+BEGIN
+select bonus into e_bonus from salary where SSN = E_SSN;
+return e_bonus;
+exception
+when no_data_found then
+dbms_output.put_line('no such employee');
+return -1;
+End;
+
+declare
+E_bonus number;
+Begin
+e_bonus := cal_bonus(873098345);
+if e_bonus > 0 then dbms_output.put_line(e_bonus);
+else dbms_output.put_line('no data found');
+end if;
+End;
+
+
+Create or replace trigger Comp_Diff_Trigger 
+Before Delete or insert or update of compensation on Salary
+For each row
+Declare
+compensation_diff number;
+Begin
+compensation_diff := :NEW.compensation - :OLD.compensation; 
+dbms_output.put_line('Compensation Last Year: ' || :OLD.compensation); 
+dbms_output.put_line('Compensation This Year: ' || :NEW.compensation); 
+dbms_output.put_line('Compensation Difference: ' || compensation_diff); 
+end;
+
+Update Salary Set compensation = compensation * 1.07
+where SSN = 873098345;
+
+
+12. Budget allocation for a particular facility cannot exceed $10000.
+
+Create or replace procedure update_Fac_Exp2(F_ID in number, Fexpenditure out number) is
+BEGIN
+SELECT sum(Purchase_Amt) INTO FExpenditure FROM PO_Facilities WHERE FID = F_ID; 
+  IF (FExpenditure<10000) THEN 
+      UPDATE PO_Facilities SET F_Expenditure = FExpenditure WHERE F_ID = FID ; 
+      DBMS_OUTPUT.PUT_LINE('Facilities expenditure has been updated. The new total is ' ||FExpenditure);
+  ELSE 
+      DBMS_OUTPUT.PUT_LINE('Facilities can be allocated only $10,000.');
+  END IF; 
+END ;
+
+declare
+FExpenditure2 number;
+Begin
+Update_Fac_Exp2(101,Fexpenditure2);
+End;
+
+
+
+13. Check last serviced date and service it, if it has been more than one year.
+
+Create or replace Procedure Eq_Service_Check (EqID in number, LastServiced out date, current_date out date) is
+BEGIN
+current_date := sysdate;
+select last_serviced into lastserviced from Equipment where eq_ID = EqID;
+if (current_date > lastserviced + interval '365' day) then 
+dbms_output.put_line('Equipment needs to be serviced. Please service it today.');
+UPDATE Equipment SET last_serviced = lastserviced WHERE EqID = Eq_ID;
+else dbms_output.put_line('Equipment need not be service. Last service was on ' || lastserviced);
+end if;
+END;
+
+Declare
+EqID number;
+Lastserviced date; 
+current_date date;
+Begin
+Eq_service_check(2003, lastserviced, current_date);
+End;
+
+
+
+14. Supplier discounts on items bought on same day.
+
+
+Create or replace procedure Supplier_Discount (S_ID in number, Purchasedate out number) is
+BEGIN
+select max(count(1)) into Purchasedate from Equipment where SID = S_ID group by purchase_date ;
+if (Purchasedate > 1) then
+dbms_output.put_line('Supplier has to give a 10% discount, since more than one equipment was bought from them on the same date.');
+else
+dbms_output.put_line('No discounts can be applied.');
+End if;
+end;
+
+Declare
+S_ID number;
+Purchasedate number; 
+Begin
+Supplier_Discount(1002, Purchasedate);
+End;
+
+
+
+15. Checking warranty on equipment and selecting who maintains the equipment.
+
+Create or replace Procedure Eq_maintained_by (EqID in number, Purchasedate out date, maintainedby out varchar2, current_date out date) is
+BEGIN
+current_date := sysdate;
+select Purchase_date, maintained_by into purchasedate, maintainedby from Equipment where eq_ID = EqID;
+if (current_date > purchasedate + interval '365' day) then 
+dbms_output.put_line('Equipment needs to be serviced by our maintenance team.');
+UPDATE Equipment SET maintained_by = 'Maintenance Team' WHERE EqID = Eq_ID;
+else dbms_output.put_line('Please contact Supplier to fix the equipment since the equipment is in the warranty period.');
+end if;
+END;
+
+Declare
+EqID number;
+Purchasedate date; 
+current_date date;
+maintainedby Varchar2(10);
+Begin
+Eq_maintained_by(2009, Purchasedate, maintainedby, current_date);
+End;
